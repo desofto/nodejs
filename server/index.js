@@ -5,7 +5,7 @@ import User from "../models/user"
   let users = await User.where("email ilike $1", ["qwe"])
   console.log(users.length)
 
-  let user = await User.find(1)
+  let user = await User.find(4)
   if(user) {
     user.email = 'qwe'
     await user.save()

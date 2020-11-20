@@ -46,9 +46,11 @@ export default class Model extends GettersSetters {
 
       let sql = `update ${this.constructor.TableName} set ${fields.join(", ")} where id = $1`
 
-      await Model.query(sql, params)
-
-      this._changes = {}
+      let res = await pool.query(sql, params)
+      if (res.rowCount > 0) {
+        this._changes = {}
+        return true
+      }
     } else {
       let fields = [], values = [], params = []
       Object.keys(this._changes).forEach((name, index) => {
@@ -59,12 +61,19 @@ export default class Model extends GettersSetters {
 
       let sql = `insert into ${this.constructor.TableName}(${fields.join(", ")}) values(${values.join(", ")}) RETURNING id`
 
-      let rows = await Model.query(sql, params)
-
-      this._data.id = rows[0].id
-
-      this._changes = {}
+      let res = await pool.query(sql, params)
+      if (res.rowCount > 0) {
+        this._data.id = res.rows[0].id
+        this._changes = {}
+        return true
+      }
     }
+  }
+
+  async destroy() {
+    let sql = `delete from ${this.constructor.TableName} where id = $1`
+    let res = await pool.query(sql, [this.id])
+    return res.rowCount > 0
   }
 
   static async query(sql, params) {
