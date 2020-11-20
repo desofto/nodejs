@@ -1,3 +1,4 @@
+import { query } from "express"
 import pool from "./pool"
 
 class GettersSetters {
@@ -7,7 +8,7 @@ class GettersSetters {
 
     return new Proxy(this, {
       get(target, key, _receiver) {
-        if(key[0] == "_") {
+        if(key in target) {
           return target[key]
         } else {
           return target._data[key]
@@ -15,7 +16,7 @@ class GettersSetters {
       },
 
       set(target, key, value, _receiver) {
-        if(key[0] == "_") {
+        if(key in target) {
           target[key] = value
         } else {
           target._data[key] = value
@@ -29,23 +30,41 @@ class GettersSetters {
 }
 
 export default class Model extends GettersSetters {
-  constructor(data) {
+  constructor(data = {}) {
     super()
     this._data = data
   }
 
-  get(name) {
-    return this.data[name]
-  }
+  async save() {
+    if(this.id) {
+      let fields = [], params = []
+      params.push(this.id)
+      Object.keys(this._changes).forEach((name, index) => {
+        fields.push(name + " = $" + (2 + index))
+        params.push(this._changes[name])
+      })
 
-  set(name, value) {
-    this.data[name] = value
-  }
+      let sql = `update ${this.constructor.TableName} set ${fields.join(", ")} where id = $1`
 
-  save() {
-    return new Promise((resolve, reject) => {
-      this._changes
-    })
+      await Model.query(sql, params)
+
+      this._changes = {}
+    } else {
+      let fields = [], values = [], params = []
+      Object.keys(this._changes).forEach((name, index) => {
+        fields.push(name)
+        values.push("$" + (1 + index))
+        params.push(this._changes[name])
+      })
+
+      let sql = `insert into ${this.constructor.TableName}(${fields.join(", ")}) values(${values.join(", ")}) RETURNING id`
+
+      let rows = await Model.query(sql, params)
+
+      this._data.id = rows[0].id
+
+      this._changes = {}
+    }
   }
 
   static async query(sql, params) {
@@ -58,9 +77,22 @@ export default class Model extends GettersSetters {
   }
 
   static async find(id) {
-    let rows = await this.query(`select * from ${this.TableName} where id = $1`, [id])
-    if(rows) {
-      return(new this(rows[0]))
+    return this.findBySQL("id = $1", [id])
+  }
+
+  static async findBySQL(conditions = "1 = 1", params = []) {
+    let rows = await this.query(`select * from ${this.TableName} where ${conditions} limit 1`, params)
+    if (rows.length > 0) {
+      return (new this(rows[0]))
     }
+  }
+
+  static async where(conditions = "1 = 1", params = []) {
+    let rows = await this.query(`select * from ${this.TableName} where ${conditions}`, params)
+    return rows.map(row => new this(row))
+  }
+
+  static async all() {
+    return await this.where()
   }
 }

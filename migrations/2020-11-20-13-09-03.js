@@ -1,9 +1,14 @@
 module.exports = async () => {
-  const { query } = require("../cmds/db")
-
-  const sql = `
-    create table uuu(id SERIAL PRIMARY KEY, google_id VARCHAR(30), created_at bigint, expires_at bigint)
-  `
+  const { createTable } = require("../cmds/db")
   
-  await query(sql)
+  await createTable(
+    "users",
+    {
+      id: "SERIAL PRIMARY KEY", 
+      email: "VARCHAR(30)",
+      full_name: "VARCHAR(30)",
+      created_at: "bigint", 
+      expires_at: "bigint"
+    }
+  )
 }

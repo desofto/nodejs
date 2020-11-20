@@ -16,7 +16,14 @@ async function query(sql, params) {
   }
 }
 
+async function createTable(name, fields) {
+  fields = Object.keys(fields).map(name => `${name} ${fields[name]}`)
+  sql = `create table ${name}(${fields.join(", ")})`
+  await query(sql)
+}
+
 module.exports = {
   pool,
-  query
+  query,
+  createTable
 }

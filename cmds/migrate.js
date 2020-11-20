@@ -10,8 +10,9 @@ async function migrate(hash, migration) {
 }
 
 ; (async () => {
-  let res = await query("select count(*) from migrations", [])
-  if (!res) {
+  try {
+    await query("select count(*) from migrations", [])
+  } catch(_) {
     await query("create table migrations(hash text PRIMARY KEY)")
   }
 
